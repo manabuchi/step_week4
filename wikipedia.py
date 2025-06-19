@@ -114,10 +114,12 @@ class Wikipedia:
         return None 
 
     # Homework #2: Calculate the page ranks and print the most popular pages.
-    def find_most_popular_pages(self, iterations = 60): # 100回くらいやった方がいいんじゃないか。
+    def find_most_popular_pages(self):
         self.pagerank = {id: 1.0 for id in self.titles}
+        delta = sum((new_pagerank[id]- self.pagerank[id]) ** 2 for id in self.titles)
+        self.pagerank = new_pagerank
 
-        for i in range(iterations):
+        while True:
             total_no_link = sum(self.pagerank[id] for id in self.titles if not self.links.get(id))
             new_pagerank = {id:0.0 for id in self.titles}
 
@@ -131,14 +133,13 @@ class Wikipedia:
 
             for id in self.titles:
                 new_pagerank[id] += 0.15 / len(self.titles)
-                new_pagerank[id] += 0.85 * total_no_link / len(self.titles)            
+                new_pagerank[id] += 0.85 * total_no_link / len(self.titles)           
 
             delta = sum((new_pagerank[id]- self.pagerank[id]) ** 2 for id in self.titles)
-            self.pagerank = new_pagerank
-            print(delta)
-
+            print(delta) #deltaがどう少なくなっていっているか確認するため
             if delta < 0.01:
-                break
+                break 
+            self.pagerank = new_pagerank
 
         most_popular_pages = sorted(self.pagerank.items(), key=lambda x: x[1], reverse=True)[:10]
         for page_id, score in most_popular_pages:
