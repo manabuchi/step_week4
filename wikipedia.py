@@ -26,6 +26,9 @@ class Wikipedia:
                 self.links[id] = []
         print("Finished reading %s" % pages_file)
 
+        self.title_to_id = {title: id for id, title in self.titles.items()}
+
+
         # Read the links file into self.links.
         with open(links_file, encoding='utf-8') as file:
             for line in file:
@@ -74,58 +77,65 @@ class Wikipedia:
     # 'start': A title of the start page.
     # 'goal': A title of the goal page.
     def find_shortest_path(self, start, goal):
-        # convert titles to id
-        start_id = None
-        goal_id = None 
-        for id, title in self.titles.items():
-            if title == start:
-                start_id = id
-            if title == goal:
-                goal_id = id
-            
-        queue = deque([[start_id]]) #startのみをqueueに入れる
+        # 辞書を使ってstartとgoalをO(1)で見つける
+        start_id = self.title_to_id.get(start)
+        goal_id = self.title_to_id.get(goal)
+
+        if start_id == goal_id:
+                return print(self.titles[start_id])   
+         
+        queue = deque([start_id]) #startのみをqueueに入れる
         visited = set() #visitedのリストの用意
+        prev = {start_id: None}
 
-        while queue: #queueの一番出てくる言葉に関して
-            path = queue.popleft() #queueの出口に一番近い言葉を出す
-            current = path[-1] #出した言葉の一つ前、つまり今一番出口に近い言葉をcurrentと定義する
-            # print(current)
-
+        while queue: #queueのからpopしてくる言葉に関して
+            current = queue.popleft() #queueの出口に一番近い言葉を出す
+            #print(current)
+            if current in visited:
+                continue  # 無限ループ防げる
+            visited.add(current)
+            
             if current == goal_id: #もしcurrentが目的地の言葉だったら
-                title_path = [self.titles[id] for id in path]
-                print(title_path) #今までの経路を出力
-                return title_path
-            
-            if current in visited: #currentが一回通ったことのある言葉だったら
-                continue #先に進む
-
-            visited.add(current) #いずれの条件にも当てはまらなければ見たことあるリストにcurrentを追加
-            
+                path = []
+                while current is not None:
+                    path.append(self.titles[current])
+                    current = prev[current]
+                path.reverse()
+                print(path)
+                return path
+                       
             for neighbor in self.links.get(current, []): #currentからリンクされてる言葉に対して
-                if neighbor not in visited: #見たことあるリストに言葉が入っていないなら
-                    new_path = list(path) #今までの経路をnew_pathに代入
-                    new_path.append(neighbor) #今回新しくできた続きの経路をnew_pathに追加
-                    queue.append(new_path) #neighborをqueueの入り口に追加
+                if neighbor not in visited and neighbor not in prev: #訪問済みリストに言葉が入っていないなら
+                    prev[neighbor] = current #今までの経路をnew_pathに代入
+                    queue.append(neighbor) #neighborをqueueの入り口に追加
+                    visited.add(neighbor)
 
-        return print("could not find shortest path") #経路が見つからなかったことを知らせる
+        print("could not find shortest path") #経路が見つからなかったことを知らせる
+        return None 
 
     # Homework #2: Calculate the page ranks and print the most popular pages.
-    def find_most_popular_pages(self, iterations = 10):
+    def find_most_popular_pages(self, iterations = 60): # 100回くらいやった方がいいんじゃないか。
         self.pagerank = {id: 1.0 for id in self.titles}
 
         for i in range(iterations):
+            total_no_link = sum(self.pagerank[id] for id in self.titles if not self.links.get(id))
             new_pagerank = {id:0.0 for id in self.titles}
 
             for id in self.titles:
                 neighbors = self.links.get(id,[])
                 if not neighbors:
                     continue
-                divided_pagerank = self.pagerank[id] / len(neighbors)
+                distributed = self.pagerank[id] / len(neighbors)
                 for neighbor in neighbors:
-                    new_pagerank[neighbor] += divided_pagerank
+                    new_pagerank[neighbor] += distributed
+
+            for id in self.titles:
+                new_pagerank[id] += 0.15 / len(self.titles)
+                new_pagerank[id] += 0.85 * total_no_link / len(self.titles)            
 
             delta = sum((new_pagerank[id]- self.pagerank[id]) ** 2 for id in self.titles)
             self.pagerank = new_pagerank
+            print(delta)
 
             if delta < 0.01:
                 break
@@ -140,11 +150,10 @@ class Wikipedia:
     # 'goal': A title of the goal 
     #page.
     def find_longest_path(self, start, goal):
-        #------------------------#
+        #------------------------# shortest pathの逆をやればよい！大きい値を残して小さいのを消す、みたいな。
         # Write your code here!  #
         #------------------------#
         pass
-
 
     # Helper function for Homework #3:
     # Please use this function to check if the found path is well formed.
@@ -172,12 +181,16 @@ if __name__ == "__main__":
 
     wikipedia = Wikipedia(pages_file, links_file)
     # Example
-    wikipedia.find_longest_titles()
+    # wikipedia.find_longest_titles()
     # Example
-    wikipedia.find_most_linked_pages()
+    # wikipedia.find_most_linked_pages()
     # Homework #1
-    wikipedia.find_shortest_path("渋谷", "パレートの法則")
+    # wikipedia.find_shortest_path("A", "B")
+
+    # wikipedia.find_shortest_path("渋谷", "パレートの法則")
     # Homework #2
     wikipedia.find_most_popular_pages()
     # Homework #3 (optional)
-    wikipedia.find_longest_path("渋谷", "池袋")
+    # wikipedia.find_longest_path("渋谷", "池袋")
+
+    # the concept of iterations...
